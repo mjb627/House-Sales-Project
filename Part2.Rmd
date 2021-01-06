@@ -1,0 +1,175 @@
+---
+title: "Group K Stat 482 Project Part 2"
+author: "Michael Bardfield, Jeffrey Remlinger, Matthew Bleeker"
+date: "October 14, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+house <- read.csv('kc_house_data.csv')
+#head(house)
+```
+
+1.	Create a table that includes descriptive statistics for each of your variables. Your table should have appropriate labels and notes. If you have categorical variables, you should include them in a separate table with their counts and proportions. For quantitative variables, you should have at least one measure of center and at least one measure of variability. Do not report every statistic that exists, just the ones that would be appropriate for your data and publication.
+```{r}
+#house<-read.csv(file.choose(), header = T)
+head(house)
+library(psych)
+summary(house) #this gives a 5 number summary including min max mean and median
+describe(house) #gives us the SD which is a measure of variability
+```
+
+2.	Create a scatterplot matrix and correlation matrix of your quantitative variables if appropriate. You should use a table format, do not just copy what R gives you in the output. Describe the relationships between the dependent variable and independent variables. You do not need to describe the relationships between the independent variables. Note if you have only one quantitative independent, you will not have matrices, just one scatterplot and one correlation.
+```{r}
+cormatrix<-cor(house[,c(3,5:6,7,13)]) #makes the correlation matrix
+cormatrix
+pairs(house[,c(3,5:6,7,13)]) #makes the scatterplot matrix
+```
+
+4.	Compute and interpret any partial correlations that would be appropriate for your data.
+```{r}
+library(ppcor)
+pcor(house[,c(3,5:6,7,13)]) #checks the partial correlations
+```
+
+Reading in data and transformations
+```{r}
+library(tidyverse)
+library(GGally)
+vars=c("price","bathrooms", "sqft_living", "sqft_lot", "sqft_above")
+list=house[vars]
+house=data.frame(list)
+#Centering data
+house1=house %>% mutate(cPrice=price-mean(price), cBathrooms=bathrooms-mean(bathrooms),
+                        cSqft_living=sqft_living-mean(sqft_living),cSqft_lot=sqft_lot-mean(sqft_lot),
+                        cSqft_above=sqft_above-mean(sqft_above))
+#Squares transformations
+house2=house1 %>% mutate(sqft_lot2=sqft_lot^2,cSqft_lot2=sqft_lot2-mean(sqft_lot2),
+                                log_cPrice=log(cPrice))
+#Log transformation
+house3=house2 %>% mutate(log_cSqft_living=log(sqft_living),log_cSqft_lot=log(sqft_lot),
+                                 log_cSqft_lot2=log(cSqft_lot2),log_cSqft_above=log(sqft_above),
+                                 log_cBathrooms=log(cBathrooms))
+head(house3)
+```
+8.	Fit 4 models labeling them A, B, C, and D.
+a.	You should use centering when creating all quantitative variables, squared terms, and interaction terms involving quantitative variables.
+```{r}
+#all unaltered, besides centered vars
+modelA=lm(formula=cPrice~cSqft_living+cSqft_lot+cSqft_above+cBathrooms,data=house1)
+modelA$coefficients
+summary(modelA)
+```
+
+b.	At least one model should include a squared term and/or interaction term and/or transformation.
+```{r}
+#log transformation model
+modelB=lm(formula=cPrice~log_cSqft_living+log_cSqft_lot+log_cBathrooms+log_cSqft_above,
+          data=house3)
+modelB$coefficients
+summary(modelB)
+```
+
+c.	At least one model should be simple, including one or two independent variables.
+```{r}
+#one or two independent vars
+modelC=lm(formula=cPrice~cSqft_above+cSqft_lot,data=house1)
+summary(modelC)
+```
+
+d.	Create a table that includes the Y-intercept with p-value, slope(s) with p-value(s), confidence intervals for slopes, adjusted R2, and the F Test Statistic with p-value from the F-test of overall model fit for each model. Standard errors should not be included in the table. If you have missing data resulting in different models having different sample sizes, make notes of this in your table.
+ModelD
+Best model I think
+```{r}
+#best model
+modelD=lm(formula=cPrice~cSqft_living+cSqft_above,data=house3)
+summary(modelD)
+-1.883e+01+1.96*4.461e+00
+-1.883e+01-1.96*4.461e+00
+```
+
+10.	Provide the least squares regression equation for your model.
+```{r}
+#calc model coefficents and means of vars
+modelD$coefficients
+mean(house$price)
+mean(house$sqft_living)
+mean(house$sqft_above)
+```
+
+(Price-540088.1)=-1.121716e-11+2.955037e+02(sqft_living-2079.9)-1.882701e+01(sqft_above-1788.391)
+
+11.	Check to see if the assumptions are met for your model. Include all appropriate graphs.
+```{r}
+#linearity graph
+reduce=house[,c("price","sqft_living","sqft_above")]
+ggpairs(reduce)
+```
+
+12.	Do you have any concerns about high standardized residuals, leverage points, and influential points? Explain. You may want to include a plot.
+```{r}
+#assumption and leverage plots for question 11 and 12
+plot(modelD)
+```
+
+13. Conduct hypothesis tests to see which independent variables are significant predictors of your dependent variable, when appropriate. If your assumptions were not met, still conduct your hypothesis tests but make a note that these would not be appropriate considering the assumptions were not met. Show all steps of your hypothesis tests.
+```{r}
+# Centering the variables in our models
+house$cPrice <- house$price - mean(house$price) 
+house$cSqft_above <- house$sqft_above - mean(house$sqft_above) 
+house$cSqft_living <- house$sqft_living - mean(house$sqft_living)
+# Fitting our full model
+model <- lm(cPrice ~ cSqft_living + cSqft_above, data=house)
+summary(model)
+
+# Fitting 2 reduced models 
+model1 <- lm(cPrice ~ cSqft_living, data=house)
+model2 <- lm(cPrice ~ cSqft_above, data=house)
+
+# Comparing reduced models to the full model
+anova(model1, model)
+anova(model2, model)
+```
+
+14. Interpret your confidence intervals for each slope, when appropriate, in your model. If your assumptions were not met, still interpret your intervals but make a note that these would not be appropriate considering the assumptions were not met.
+```{r}
+# Creating confidence intervals from our full model
+confint(model, 'cSqft_above', level=0.95)
+confint(model, 'cSqft_living', level=0.95)
+```
+
+15. Create ONE graph that summarizes the important aspects of your model and interpret it. Your graph should not be a simple scatterplot and should involve more than two variables. If your model had only one independent variable, incorporate another variable you were interested in studying into your graph. You can look for example graphs in the PowerPoints, labs, and homework. You may also search for other graphs we did not learn about on the internet. Be creative!
+```{r}
+# Creating boxplot of centered square foot above and living vs centered price
+#library(ggplot2)
+#boxplot(x=house[,c('cSqft_above','cSqft_living')], y=house[,'cPrice'], xlab='Centered Square Foot Above and Centered Square Foot Living', ylab='Centered Price', main='Boxplots of Centered Square Foot Above and Living vs Centered Price', cex.main=1) 
+
+library(visreg)
+# model <- lm(cPrice ~ cSqft_living + cSqft_above, data=house)
+visreg(model, "cSqft_living", by="cSqft_above", xlab="Centered Square Footage of Interior Living Space (cSqft_living)", ylab="Centered Price (cPrice)") 
+```
+
+Slides
+```{r}
+library(gtsummary)
+library(dplyr)
+house4 <- house %>% select(price, bathrooms, sqft_living, sqft_lot, sqft_above)
+house_summary <-  tbl_summary(house4, statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% modify_header(label ~ "**Variable**") %>% modify_spanning_header(label ~ "**Table 1**")
+house_summary
+
+library(sjPlot)
+tab_model(modelA, modelB, modelC, modelD, dv.labels = c('Model A','Model B', 'Model C', 'Model D'), show.fstat = TRUE)
+
+library(stargazer)
+stargazer(modelA, modelB, modelC, modelD, type = 'html', ci = TRUE, out = 'models_summary.html', intercept.bottom = FALSE, intercept.top = TRUE, p.auto = FALSE, column.labels = c('Model A','Model B', 'Model C', 'Model D'), omit.stat = 'ser')
+
+
+
+
+```
+
+
